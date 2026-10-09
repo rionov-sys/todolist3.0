@@ -1,0 +1,46 @@
+﻿name: keepgrinding
+description: "KeepGrinding — modern task & schedule management app with offline-first sync."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  # State management (ChangeNotifier + dependency scoping)
+  provider: ^6.1.5
+  # Networking / backend integration
+  http: ^1.4.0
+  # Offline detection for "koneksi terputus" handling & auto-retry
+  connectivity_plus: ^6.1.4
+  # Local cache (offline-first persistence)
+  shared_preferences: ^2.5.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Plus Jakarta Sans - bundled locally so the app renders correctly offline
+  # (no runtime font fetching, no deprecated imports).
+  fonts:
+    - family: Plus Jakarta Sans
+      fonts:
+        - asset: assets/fonts/PlusJakartaSans-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/PlusJakartaSans-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/PlusJakartaSans-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/PlusJakartaSans-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/PlusJakartaSans-ExtraBold.ttf
+          weight: 800
