@@ -6,8 +6,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:keepgrinding/data/models/task.dart';
 import 'package:keepgrinding/data/repositories/task_repository.dart';
+import 'package:keepgrinding/data/services/auth_backend.dart';
+import 'package:keepgrinding/data/services/auth_service.dart';
 import 'package:keepgrinding/data/services/local_storage_service.dart';
 import 'package:keepgrinding/main.dart';
+import 'package:keepgrinding/state/auth_provider.dart';
 import 'package:keepgrinding/state/task_provider.dart';
 
 class _FakeRepository implements TaskRepository {
@@ -35,15 +38,60 @@ class _FakeRepository implements TaskRepository {
   int get pendingSyncCount => 0;
 }
 
+/// In-memory [AuthBackend] that reports an already-signed-in user, so the
+/// smoke test lands directly on the main shell instead of the login screen.
+class _FakeAuth implements AuthBackend {
+  @override
+  Future<AuthUser?> currentUser() async => _user;
+
+  @override
+  Future<String?> rememberedEmail() async => _user.email;
+
+  @override
+  Future<AuthUser> register({
+    required String name,
+    required String email,
+    required String password,
+    required String focus,
+  }) async =>
+      _user;
+
+  @override
+  Future<AuthUser> login({
+    required String emailOrUsername,
+    required String password,
+    required bool rememberMe,
+  }) async =>
+      _user;
+
+  @override
+  Future<AuthUser> signInWithGoogle() async => _user;
+
+  @override
+  Future<void> logout() async {}
+
+  static const AuthUser _user = AuthUser(
+    name: 'Rio',
+    email: 'rio@example.com',
+    focus: 'Pribadi',
+  );
+}
+
 Future<void> _pumpApp(WidgetTester tester) async {
   SharedPreferences.setMockInitialValues(<String, Object>{});
   final SharedPreferences prefs = await SharedPreferences.getInstance();
   // Touch the real storage service so its contract stays covered.
   LocalStorageService(prefs);
   await tester.pumpWidget(
-    ChangeNotifierProvider<TaskProvider>(
-      create: (_) =>
-          TaskProvider(repository: _FakeRepository([]))..load(),
+    MultiProvider(
+      providers: <ChangeNotifierProvider<dynamic>>[
+        ChangeNotifierProvider<TaskProvider>(
+          create: (_) => TaskProvider(repository: _FakeRepository([]))..load(),
+        ),
+        ChangeNotifierProvider<AuthProvider>(
+          create: (_) => AuthProvider(service: _FakeAuth())..bootstrap(),
+        ),
+      ],
       child: const KeepGrindingApp(),
     ),
   );

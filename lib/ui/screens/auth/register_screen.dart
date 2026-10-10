@@ -87,6 +87,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  /// Real native Google Sign-In via Supabase.
+  Future<void> _googleSignIn() async {
+    final AuthProvider auth = context.read<AuthProvider>();
+    final bool ok = await auth.signInWithGoogle();
+    if (!mounted) return;
+    if (ok) {
+      AppToast.show(context, 'Berhasil masuk dengan Google!');
+      Navigator.of(context).pop();
+    } else {
+      AppSnack.show(
+        context,
+        auth.error ?? 'Masuk dengan Google gagal.',
+        error: true,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final AuthProvider auth = context.watch<AuthProvider>();
@@ -159,8 +176,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           const AuthDivider(text: 'atau daftar lebih cepat dengan'),
           AuthSocialRow(
-            onSocial: (String p) => AppToast.show(
-                context, 'Daftar $p segera hadir. Pakai form dulu ya.'),
+            busyProvider: auth.busy ? 'Google' : null,
+            onSocial: (String p) {
+              if (p != 'Google') {
+                AppToast.show(context, 'Daftar $p segera hadir.');
+                return;
+              }
+              _googleSignIn();
+            },
           ),
           const SizedBox(height: 16),
           Center(

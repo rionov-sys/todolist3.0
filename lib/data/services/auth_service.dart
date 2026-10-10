@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'auth_backend.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Simple local auth backed by `shared_preferences`.
@@ -38,8 +40,8 @@ class AuthException implements Exception {
   String toString() => message;
 }
 
-class AuthService {
-  AuthService(this._prefs);
+class LocalAuthService implements AuthBackend {
+  LocalAuthService(this._prefs);
 
   final SharedPreferences _prefs;
 
@@ -68,7 +70,8 @@ class AuthService {
   String _obfuscate(String input) =>
       base64Encode(utf8.encode('kg::$input'));
 
-  AuthUser? currentUser() {
+  @override
+  Future<AuthUser?> currentUser() async {
     final String? email = _prefs.getString(_kSession);
     if (email == null || email.isEmpty) return null;
     final Map<String, Map<String, dynamic>> users = _readUsers();
@@ -77,8 +80,10 @@ class AuthService {
     return AuthUser.fromJson(raw);
   }
 
-  String? rememberedEmail() => _prefs.getString(_kRemember);
+  @override
+  Future<String?> rememberedEmail() async => _prefs.getString(_kRemember);
 
+  @override
   Future<AuthUser> register({
     required String name,
     required String email,
@@ -116,6 +121,7 @@ class AuthService {
     );
   }
 
+  @override
   Future<AuthUser> login({
     required String emailOrUsername,
     required String password,
@@ -150,7 +156,18 @@ class AuthService {
     return user;
   }
 
-  Future<void> logout() => _prefs.remove(_kSession);
+  @override
+  Future<AuthUser> signInWithGoogle() async {
+    // Local (offline) mode has no identity provider to delegate to. Throwing a
+    // friendly [AuthException] keeps the button honest instead of pretending.
+    throw AuthException(
+      'Masuk dengan Google butuh koneksi ke Supabase. '
+      'Aktifkan mode cloud untuk memakai fitur ini.',
+    );
+  }
+
+  @override
+  Future<void> logout() async => _prefs.remove(_kSession);
 
   bool _isEmail(String value) {
     if (!value.contains('@') || !value.contains('.')) return false;

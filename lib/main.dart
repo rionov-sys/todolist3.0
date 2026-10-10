@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' show BuildContext, Column, Expanded, IndexedStack, MaterialApp, SafeArea, Scaffold, State, StatefulWidget, StatelessWidget, Widget, WidgetsFlutterBinding, runApp;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/config/app_config.dart';
 import 'core/theme/app_theme.dart';
@@ -9,6 +10,8 @@ import 'data/services/api_service.dart';
 import 'data/services/auth_service.dart';
 import 'data/services/connectivity_service.dart';
 import 'data/services/local_storage_service.dart';
+import 'data/services/supabase_auth_service.dart';
+import 'data/services/supabase_remote.dart';
 import 'state/auth_provider.dart';
 import 'state/task_provider.dart';
 import 'ui/screens/analytics_screen.dart';
@@ -23,24 +26,49 @@ import 'ui/widgets/offline_banner.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Cloud mode is opt-in via --dart-define so the repo stays secret-free.
+  // With no defines the app boots local-only and still builds/runs.
+  if (AppConfig.hasSupabaseConfig) {
+    await Supabase.initialize(
+      url: AppConfig.supabaseUrl,
+      publishableKey: AppConfig.supabaseAnonKey,
+    );
+  }
+
   final SharedPreferences prefs = await SharedPreferences.getInstance();
+  final SupabaseClient? client =
+      AppConfig.hasSupabaseConfig ? Supabase.instance.client : null;
+
   final TaskRepository repository = TaskRepositoryImpl(
-    api: ApiService(baseUrl: AppConfig.apiBaseUrl),
+    api: client != null
+        ? SupabaseRemote(client)
+        : ApiService(baseUrl: AppConfig.apiBaseUrl),
     storage: LocalStorageService(prefs),
   );
-  final AuthService authService = AuthService(prefs);
+
+  final TaskProvider taskProvider = TaskProvider(
+    repository: repository,
+    connectivity: ConnectivityService(),
+  );
+  final AuthProvider authProvider = AuthProvider(
+    service: client != null
+        ? SupabaseAuthService(client)
+        : LocalAuthService(prefs),
+    onSessionChanged: (bool loggedIn) {
+      if (loggedIn) {
+        taskProvider.load();
+      } else {
+        taskProvider.clear();
+      }
+    },
+  )..bootstrap();
+
   runApp(
     MultiProvider(
       providers: <ChangeNotifierProvider<dynamic>>[
-        ChangeNotifierProvider<TaskProvider>(
-          create: (_) => TaskProvider(
-            repository: repository,
-            connectivity: ConnectivityService(),
-          )..load(),
-        ),
-        ChangeNotifierProvider<AuthProvider>(
-          create: (_) => AuthProvider(service: authService)..bootstrap(),
-        ),
+        ChangeNotifierProvider<TaskProvider>.value(value: taskProvider),
+        ChangeNotifierProvider<AuthProvider>.value(value: authProvider),
       ],
       child: const KeepGrindingApp(),
     ),

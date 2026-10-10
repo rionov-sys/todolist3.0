@@ -20,7 +20,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _password = TextEditingController();
   bool _obscure = true;
   bool _remember = true;
-  bool _prefilled = false;
 
   @override
   void dispose() {
@@ -44,14 +43,41 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  /// Real native Google Sign-In via Supabase.
+  Future<void> _googleSignIn() async {
+    final AuthProvider auth = context.read<AuthProvider>();
+    final bool ok = await auth.signInWithGoogle();
+    if (!mounted) return;
+    if (ok) {
+      AppToast.show(context, 'Berhasil masuk dengan Google!');
+    } else {
+      AppSnack.show(
+        context,
+        auth.error ?? 'Masuk dengan Google gagal.',
+        error: true,
+      );
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _prefillEmail();
+  }
+
+  /// Prefills the last signed-in email ("Ingat saya"). Runs once, after the
+  /// first frame, so it never triggers a rebuild inside `build`.
+  Future<void> _prefillEmail() async {
+    final String? email = await context.read<AuthProvider>().rememberedEmail();
+    if (!mounted) return;
+    if (email != null && email.isNotEmpty) {
+      _email.text = email;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final AuthProvider auth = context.watch<AuthProvider>();
-    if (!_prefilled) {
-      _prefilled = true;
-      final String? r = auth.rememberedEmail();
-      if (r != null && r.isNotEmpty) _email.text = r;
-    }
     return AuthScaffold(
       child: Column(
         children: <Widget>[
@@ -179,8 +205,14 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const AuthDivider(text: 'atau masuk dengan'),
           AuthSocialRow(
-            onSocial: (String p) =>
-                AppToast.show(context, 'Login $p segera hadir.'),
+            busyProvider: auth.busy ? 'Google' : null,
+            onSocial: (String p) {
+              if (p != 'Google') {
+                AppToast.show(context, 'Login $p segera hadir.');
+                return;
+              }
+              _googleSignIn();
+            },
           ),
           const SizedBox(height: 16),
           Row(

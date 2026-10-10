@@ -2,6 +2,7 @@ import '../demo_data.dart';
 import '../models/task.dart';
 import '../services/api_service.dart';
 import '../services/local_storage_service.dart';
+import '../services/task_remote.dart';
 
 /// Fatal data-layer failure (message already user friendly).
 class RepositoryException implements Exception {
@@ -57,9 +58,10 @@ abstract class TaskRepository {
 /// Mutations always apply locally first (optimistic UI) and are queued in an
 /// outbox when the server is unreachable.
 class TaskRepositoryImpl implements TaskRepository {
-  TaskRepositoryImpl({required this._api, required this._storage});
+  TaskRepositoryImpl({required TaskRemote api, required this._storage})
+      : _api = api; // ignore: prefer_initializing_formals
 
-  final ApiService _api;
+  final TaskRemote _api;
   final LocalStorageService _storage;
 
   List<Task>? _cache;

@@ -54,11 +54,20 @@ class AuthPrimaryButton extends StatelessWidget {
   }
 }
 
-/// Google / Apple style social buttons (demo actions).
+/// Google / Apple style social buttons.
+///
+/// [onSocial] fires with the provider label. [busyProvider] is the label of the
+/// provider currently signing in (null = idle), so the tapped button shows a
+/// spinner while the rest stay tappable.
 class AuthSocialRow extends StatelessWidget {
-  const AuthSocialRow({super.key, required this.onSocial});
+  const AuthSocialRow({
+    super.key,
+    required this.onSocial,
+    this.busyProvider,
+  });
 
   final void Function(String provider) onSocial;
+  final String? busyProvider;
 
   @override
   Widget build(BuildContext context) {
@@ -68,6 +77,7 @@ class AuthSocialRow extends StatelessWidget {
           child: _SocialButton(
             label: 'Google',
             icon: Icons.g_mobiledata_rounded,
+            loading: busyProvider == 'Google',
             onTap: () => onSocial('Google'),
           ),
         ),
@@ -76,6 +86,7 @@ class AuthSocialRow extends StatelessWidget {
           child: _SocialButton(
             label: 'Apple',
             icon: Icons.apple,
+            loading: busyProvider == 'Apple',
             onTap: () => onSocial('Apple'),
           ),
         ),
@@ -89,34 +100,45 @@ class _SocialButton extends StatelessWidget {
     required this.label,
     required this.icon,
     required this.onTap,
+    this.loading = false,
   });
 
   final String label;
   final IconData icon;
   final VoidCallback onTap;
+  final bool loading;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surfaceContainerLowest,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
+    return Opacity(
+      opacity: loading ? 0.6 : 1,
+      child: Material(
+        color: AppColors.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(16),
-        onTap: onTap,
-        child: Container(
-          height: 48,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: AppShadows.soft,
-          ),
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              Icon(icon, size: 22, color: AppColors.onSurface),
-              const SizedBox(width: 8),
-              Text(label, style: AppTypography.labelMd),
-            ],
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: loading ? null : onTap,
+          child: Container(
+            height: 48,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: AppShadows.soft,
+            ),
+            alignment: Alignment.center,
+            child: loading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2.5),
+                  )
+                : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                      Icon(icon, size: 22, color: AppColors.onSurface),
+                      const SizedBox(width: 8),
+                      Text(label, style: AppTypography.labelMd),
+                    ],
+                  ),
           ),
         ),
       ),

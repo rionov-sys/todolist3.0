@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../core/config/app_config.dart';
+import 'task_remote.dart';
 
 /// Error surfaced by [ApiService] with a user-friendly Indonesian message.
 class ApiException implements Exception {
@@ -23,7 +24,10 @@ class ApiException implements Exception {
 /// * transport errors (offline, DNS, refused connection, TLS…) are normalised
 ///   into a single [ApiException] with a human-readable message
 /// * non-2xx responses are mapped to contextual messages
-class ApiService {
+///
+/// Implements [TaskRemote] so the repository can swap in a Supabase backend
+/// without any change to its offline-first logic.
+class ApiService implements TaskRemote {
   ApiService({required String baseUrl, http.Client? client})
       : _baseUrl =
             baseUrl.endsWith('/') ? baseUrl.substring(0, baseUrl.length - 1) : baseUrl,
@@ -35,9 +39,11 @@ class ApiService {
   Uri _uri(String path) =>
       Uri.parse('$_baseUrl/${path.startsWith('/') ? path.substring(1) : path}');
 
+  @override
   Future<dynamic> getList(String path) async =>
       _decode(await _send(() => _client.get(_uri(path))));
 
+  @override
   Future<dynamic> post(String path, Map<String, dynamic> body) async =>
       _decode(await _send(
         () => _client.post(
@@ -47,6 +53,7 @@ class ApiService {
         ),
       ));
 
+  @override
   Future<dynamic> patch(String path, Map<String, dynamic> body) async =>
       _decode(await _send(
         () => _client.patch(
@@ -56,6 +63,7 @@ class ApiService {
         ),
       ));
 
+  @override
   Future<void> delete(String path) async {
     await _send(() => _client.delete(_uri(path)));
   }

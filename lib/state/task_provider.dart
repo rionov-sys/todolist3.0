@@ -109,6 +109,22 @@ class TaskProvider extends ChangeNotifier {
     await _fetch(preserveState: true);
   }
 
+  /// Drops the in-memory list when the signed-in account changes, so one
+  /// user's tasks can never leak into another user's session.
+  void clear() {
+    _tasks = <Task>[];
+    _loadState = LoadState.loading;
+    _loadError = null;
+    _isOffline = false;
+    _notice = null;
+    _pendingSync = 0;
+    _searchQuery = '';
+    _homeStatusFilter = null;
+    _timelineStatusFilter = TimelineStatusFilter.all;
+    _timelineCategoryFilter = null;
+    notifyListeners();
+  }
+
   Future<void> _fetch({bool preserveState = false}) async {
     try {
       final FetchResult result = await _repository.loadTasks();

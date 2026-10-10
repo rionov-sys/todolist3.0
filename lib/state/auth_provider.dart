@@ -1,15 +1,23 @@
 import 'package:flutter/foundation.dart';
 
-import '../data/services/auth_service.dart';
+import '../data/services/auth_backend.dart';
+import '../data/services/auth_service.dart' show AuthException, AuthUser;
 
 /// Session state for the login/register flow.
 ///
 /// Kept separate from [TaskProvider] so auth stays testable and the
 /// shell can react to login/logout with a single `notifyListeners`.
 class AuthProvider extends ChangeNotifier {
-  AuthProvider({required AuthService service}) : _service = service;
+  AuthProvider({
+    required AuthBackend service,
+    this.onSessionChanged,
+  }) : _service = service; // ignore: prefer_initializing_formals
 
-  final AuthService _service;
+  final AuthBackend _service;
+
+  /// Fired with the new signed-in state so the task list can reload (or clear
+  /// its cache) the moment the user switches account.
+  final void Function(bool isLoggedIn)? onSessionChanged;
 
   AuthUser? _user;
   bool _busy = false;
@@ -19,12 +27,15 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoggedIn => _user != null;
   bool get busy => _busy;
   String? get error => _error;
-  String? rememberedEmail() => _service.rememberedEmail();
 
-  void bootstrap() {
-    _user = _service.currentUser();
+  /// Restores a persisted session on cold start.
+  Future<void> bootstrap() async {
+    _user = await _service.currentUser();
     notifyListeners();
   }
+
+  /// Email suggested for the "Ingat saya" prefill.
+  Future<String?> rememberedEmail() => _service.rememberedEmail();
 
   Future<bool> login({
     required String emailOrUsername,
@@ -42,6 +53,7 @@ class AuthProvider extends ChangeNotifier {
         password: password,
         rememberMe: rememberMe,
       );
+      onSessionChanged?.call(true);
       return true;
     } on AuthException catch (e) {
       _error = e.message;
@@ -69,6 +81,24 @@ class AuthProvider extends ChangeNotifier {
         password: password,
         focus: focus,
       );
+      onSessionChanged?.call(true);
+      return true;
+    } on AuthException catch (e) {
+      _error = e.message;
+      return false;
+    } finally {
+      _busy = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> signInWithGoogle() async {
+    _busy = true;
+    _error = null;
+    notifyListeners();
+    try {
+      _user = await _service.signInWithGoogle();
+      onSessionChanged?.call(true);
       return true;
     } on AuthException catch (e) {
       _error = e.message;
@@ -82,6 +112,7 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     await _service.logout();
     _user = null;
+    onSessionChanged?.call(false);
     notifyListeners();
   }
 }

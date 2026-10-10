@@ -16,6 +16,9 @@ dependencies:
   provider: ^6.1.5
   # Networking / backend integration
   http: ^1.4.0
+  supabase_flutter: ^2.18.2
+  # Native Google Sign-In for Supabase (Google OAuth -> idToken -> Supabase)
+  google_sign_in: ^7.1.5
   # Offline detection for "koneksi terputus" handling & auto-retry
   connectivity_plus: ^7.3.2
   # Local cache (offline-first persistence)
