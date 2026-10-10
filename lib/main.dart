@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/material.dart' show BuildContext, Column, Expanded, IndexedStack, MaterialApp, SafeArea, Scaffold, State, StatefulWidget, StatelessWidget, Widget, WidgetsFlutterBinding, runApp;
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -6,10 +6,13 @@ import 'core/config/app_config.dart';
 import 'core/theme/app_theme.dart';
 import 'data/repositories/task_repository.dart';
 import 'data/services/api_service.dart';
+import 'data/services/auth_service.dart';
 import 'data/services/connectivity_service.dart';
 import 'data/services/local_storage_service.dart';
+import 'state/auth_provider.dart';
 import 'state/task_provider.dart';
 import 'ui/screens/analytics_screen.dart';
+import 'ui/screens/auth/login_screen.dart';
 import 'ui/screens/home_screen.dart';
 import 'ui/screens/profile_screen.dart';
 import 'ui/screens/timeline_screen.dart';
@@ -25,12 +28,20 @@ Future<void> main() async {
     api: ApiService(baseUrl: AppConfig.apiBaseUrl),
     storage: LocalStorageService(prefs),
   );
+  final AuthService authService = AuthService(prefs);
   runApp(
-    ChangeNotifierProvider<TaskProvider>(
-      create: (_) => TaskProvider(
-        repository: repository,
-        connectivity: ConnectivityService(),
-      )..load(),
+    MultiProvider(
+      providers: <ChangeNotifierProvider<dynamic>>[
+        ChangeNotifierProvider<TaskProvider>(
+          create: (_) => TaskProvider(
+            repository: repository,
+            connectivity: ConnectivityService(),
+          )..load(),
+        ),
+        ChangeNotifierProvider<AuthProvider>(
+          create: (_) => AuthProvider(service: authService)..bootstrap(),
+        ),
+      ],
       child: const KeepGrindingApp(),
     ),
   );
@@ -49,8 +60,20 @@ class KeepGrindingApp extends StatelessWidget {
       title: AppConfig.appName,
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
-      home: const AppShell(),
+      home: const AuthGate(),
     );
+  }
+}
+
+/// Shows login until a session exists, then the main bottom-nav shell.
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final AuthProvider auth = context.watch<AuthProvider>();
+    if (!auth.isLoggedIn) return const LoginScreen();
+    return const AppShell();
   }
 }
 

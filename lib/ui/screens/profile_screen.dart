@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_typography.dart';
 import '../../data/models/task_stats.dart';
+import '../../state/auth_provider.dart';
 import '../../state/task_provider.dart';
 import '../widgets/analytics_widgets.dart';
 import '../widgets/app_toast.dart';
@@ -27,6 +28,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final TaskProvider provider = context.watch<TaskProvider>();
+    final AuthProvider auth = context.watch<AuthProvider>();
+    final String displayName =
+        (auth.user?.name.isNotEmpty ?? false) ? auth.user!.name : AppConfig.userName;
+    final String displayEmail =
+        (auth.user?.email.isNotEmpty ?? false) ? auth.user!.email : 'rifat@keepgrinding.app';
+    final String displayFocus =
+        (auth.user?.focus.isNotEmpty ?? false) ? auth.user!.focus : 'Proyek Tim';
     if (provider.isLoading) return const _ProfileSkeleton();
     if (provider.hasFatalError) {
       return ErrorStateView(
@@ -79,7 +87,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     alignment: Alignment.center,
                     child: Text(
-                      AppConfig.userName.characters.first.toUpperCase(),
+                      displayName.isEmpty
+                          ? '?'
+                          : displayName.characters.first.toUpperCase(),
                       style: AppTypography.headlineLg.copyWith(
                         color: AppColors.onPrimaryFixed,
                         fontWeight: FontWeight.w800,
@@ -92,14 +102,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
                         Text(
-                          AppConfig.userName,
+                          displayName,
                           style: AppTypography.headlineSm.copyWith(
                             color: AppColors.onSurface,
                           ),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Product Designer • Keep Grinding!',
+                          displayEmail,
                           style: AppTypography.bodySm.copyWith(
                             color: AppColors.onSurfaceVariant,
                           ),
@@ -115,7 +125,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
-                            '🔥 ${stats.streakDays} Hari Beruntun',
+                            "$displayFocus \u2022 ${stats.streakDays} Hari Beruntun",
                             style: AppTypography.labelSm.copyWith(
                               color: AppColors.onPrimaryFixed,
                               fontWeight: FontWeight.w800,
@@ -297,6 +307,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: AppColors.outline,
                     ),
                   ),
+                ),
+                ListTile(
+                  leading: Container(
+                    width: 40,
+                    height: 40,
+                    decoration: const BoxDecoration(
+                      color: AppColors.errorContainer,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.logout_rounded,
+                      size: 20,
+                      color: AppColors.error,
+                    ),
+                  ),
+                  title: const Text('Keluar'),
+                  subtitle: Text(
+                    displayEmail,
+                    style: AppTypography.bodySm.copyWith(
+                      color: AppColors.outline,
+                    ),
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () async { await context.read<AuthProvider>().logout(); if (!context.mounted) return; AppToast.show(context, 'Kamu sudah keluar. Sampai jumpa!'); },
                 ),
               ],
             ),
